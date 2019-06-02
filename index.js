@@ -1,7 +1,7 @@
 import { Minter, SendTxParams, SetCandidateOffTxParams } from "minter-js-sdk";
 import config from './config';
-import log from './logging';
-import api from './api';
+import log from './assets/logging';
+import api from './api/node';
 
 const stack = [];
 let monitorTimerPtr;
@@ -53,6 +53,7 @@ function switchValidatorOff() {
 
 function checkNextBlock() {
     api.getStatus().then(({ data: { latest_block_height, latest_block_time }}) => {
+
         if (stack.length && latest_block_height === stack.slice(-1)[0].height) {
             return;
         }
@@ -67,7 +68,7 @@ function checkNextBlock() {
                 checkMissingBlocks();
             }
         });
-    });
+    })
 };
 
 function startMonitoring() {

@@ -1,11 +1,12 @@
-import config from './config';
-import telegram from './telegram';
+import config from '../config';
+import telegram from '../api/telegram';
+import {handleError} from '../assets/utils';
 
 let telegramMessageId = null;
 
 const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор*';
 const errorMessage = '\u203c\ufe0f Пропущен блок *{{missedBlock}}*\n*{{moniker}}*';
-const statusMessage = 
+const statusMessage =
     'Блок *{{lastBlock}}:*\n' +
     '{{missedBlocks}} пропущено из {{maxErrorRate}}\n' +
     '`{{artwork}}`\n\n' +
@@ -49,9 +50,7 @@ function formatDate (time) {
     });
 };
 
-function handleError ({ response: { data }}) {
-    console.error(data);
-};
+
 
 export default {
     updateStatus ({ stack, missedBlocks, lastKnownBlock }) {
@@ -72,9 +71,11 @@ export default {
                 telegram.editMessageText({ text, message_id: telegramMessageId }).catch(handleError);
             }
         } else {
+
             telegram.sendMessage({ text }).then(({ data: { result: { message_id }}}) => {
                 updateLastMessageId(message_id);
             }).catch(handleError);
+
         }
 
         console.log(filterMarkdown(text));
