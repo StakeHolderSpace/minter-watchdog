@@ -1,11 +1,10 @@
-version: '3'
+version: '2'
 services:
   node:
-    image: node:11-alpine
+    image: node:11
     volumes:
-      - .:/usr/node/app/
-      - /usr/node/app/node_modules
-    working_dir: /usr/node/app/
+      - ./:/usr/src/app
+    working_dir: /usr/src/app
     environment:
-      - NODE_ENV=production
-    command: bash -c "npm install && npm start"
+      NODE_ENV: production
+    command: sh -c "npm install && npm start"
