@@ -1,0 +1,11 @@
+version: '2'
+services:
+  node:
+    image: node:11
+    volumes:
+      - .:/usr/node/app/
+      - /usr/node/app/node_modules
+    working_dir: /usr/node/app/
+    environment:
+      - NODE_ENV=production
+    command: bash -c "npm install && npm start"
