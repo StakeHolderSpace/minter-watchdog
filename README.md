@@ -23,7 +23,9 @@ cp ./config.js.example ./config.js
 
 chmod 600 ./config.js
 
-docker-compose up -d --build
+docker-compose build && docker system prune -f
+
+docker-compose up -d
 
 ```
 
