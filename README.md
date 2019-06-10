@@ -1,33 +1,29 @@
-<p align="center">
-  <img src="https://minter.one/img/watchdog.png">
-</p>
-
 ### Установка и запуск
 ```
-git clone https://github.com/ingria/minter-watchdog.git
+git clone 
 cd minter-watchdog
 npm install
 cp ./config.js.example ./config.js
 
 // Заполняем настройки в config.js, затем:
 
+chmod 600 ./config.js
+
 npm run start
 ```
 
-Желательно запускать из-под рута, предварительно сделав:
+### Docker
 
 ```
+git clone
+cd minter-watchdog
+cp ./config.js.example ./config.js
+
+// Заполняем настройки в config.js, затем:
+
 chmod 600 ./config.js
-```
 
-### Supervisor/Systemctl
-Полная команда для запуска с помощью service или supervisor:
+docker-compose up -d --build
 
 ```
-/usr/bin/npm start --prefix /PATH/TO/WATCHDOG/ run
-                        не забываем про слеш ^
-```
 
-### Тестнет
-http://testnet.node.minter.one:8841
-http://138.197.222.87:8841

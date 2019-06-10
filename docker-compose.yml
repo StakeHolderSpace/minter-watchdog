@@ -1,12 +1,9 @@
-version: '2'
+version: '3.7'
 services:
   node:
-    image: node:11
-    restart: always
+    build:
+      context: .
+    image: minter-watchdog
     volumes:
-      - ./:/usr/src/app
-      - /usr/src/app/node_modules
-    working_dir: /usr/src/app
-    environment:
-      NODE_ENV: production
-    command: sh -c "npm install && npm start"
+      - ./:/app
+    working_dir: /app

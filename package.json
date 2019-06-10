@@ -1,5 +1,5 @@
 {
-  "name": "watchdog",
+  "name": "minter-watchdog",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.18.0",
-    "esm": "^3.2.22",
-    "minter-js-sdk": "^0.16.0"
+    "esm": "^3.2.22"
+  },
+  "devDependencies":{
+   "minter-js-sdk": "^0.16.0"
   }
 }
