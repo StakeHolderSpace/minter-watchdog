@@ -7,3 +7,4 @@ services:
     volumes:
       - ./config.js:/app/config.js
     working_dir: /app
+    restart: always

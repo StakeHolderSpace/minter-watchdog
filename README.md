@@ -1,4 +1,4 @@
-### Установка и запуск
+### 
 ```
 git clone https://github.com/StakeHolderSpace/minter-watchdog.git
 
