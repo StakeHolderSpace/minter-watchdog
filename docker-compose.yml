@@ -3,7 +3,7 @@ services:
   node:
     build:
       context: .
-    image: minter-watchdog
+    image: minter-watchdog:latest
     volumes:
-      - ./:/app
+      - ./config.js:/app/config.js
     working_dir: /app

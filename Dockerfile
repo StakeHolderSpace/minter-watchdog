@@ -4,22 +4,21 @@ FROM node:11 AS base
 WORKDIR /app
 
 # ---- Зависимости ----
-FROM base AS dependencies  
+FROM base AS dependencies
 
 COPY package*.json ./
 
-RUN npm install 
+RUN npm install
 
 # ---- Скопировать файлы/билд ----
-FROM dependencies AS build  
+FROM dependencies AS build
 
 WORKDIR /app
 
 COPY . /app
 
-
 # --- Выпуск, используя Alpine ----
-FROM node:11-alpine AS release  
+FROM node:11-alpine AS release
 
 WORKDIR /app
 
