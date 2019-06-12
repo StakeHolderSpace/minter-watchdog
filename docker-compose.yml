@@ -4,8 +4,7 @@ services:
     restart: always
     build:
       context: .
-    image: minter-watchdog
-    container_name: minter-watchdog
+    image: "minter-watchdog:${DOC_VERSION}"
     volumes:
       - ./config.js:/app/config.js
     working_dir: /app

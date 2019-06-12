@@ -1,5 +1,5 @@
 # ---- Базовый Node ----
-FROM node:11 AS base
+FROM node:11-alpine AS base
 
 WORKDIR /app
 
@@ -8,12 +8,16 @@ FROM base AS dependencies
 
 COPY package*.json ./
 
-RUN npm install
+RUN apk add --no-cache --virtual .gyp \
+        git \
+        python \
+        make \
+        g++ \
+    && npm install --unsafe-perm \
+    && apk del .gyp
 
 # ---- Скопировать файлы/билд ----
 FROM dependencies AS build
-
-WORKDIR /app
 
 COPY . /app
 
@@ -22,11 +26,15 @@ FROM node:11-alpine AS release
 
 WORKDIR /app
 
-COPY --from=dependencies /app/package.json ./
-
-RUN   npm install --only=production
+#COPY --from=dependencies /app/package.json ./
 
 COPY --from=build /app ./
+
+RUN chown -R node:node /app
+
+USER node
+
+#RUN   npm install --only=production
 
 #
 CMD ["node", "-r","esm","index.js"]
