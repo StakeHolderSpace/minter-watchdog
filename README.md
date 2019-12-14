@@ -6,11 +6,11 @@ cd minter-watchdog
 
 npm install
 
-cp ./config.js.example ./config.js
+cp ./.env.example ./.env
 
-# Заполняем настройки в config.js, затем:
+# Заполняем настройки в .env, затем:
 
-chmod 600 ./config.js
+chmod 600 ./.env
 
 npm run start
 ```
@@ -24,12 +24,12 @@ cd minter-watchdog
 
 docker-compose build && docker system prune -f
 
+cp ./.env.example ./.env
 
-cp ./config.js.example ./config.js
+# Заполняем настройки в .env, затем:
 
-# Заполняем настройки в config.js, затем:
+chmod 600 ./.env
 
-chmod 600 ./config.js
 
 docker-compose up -d
 
