@@ -1,10 +1,16 @@
 version: '3.7'
 services:
   node:
-    restart: always
+    restart: unless-stopped
     build:
       context: .
-    image: "minter-watchdog:${DOC_VERSION}"
+    image: "stakeholder/watchdog:1.1.0"
     volumes:
-      - ./config.js:/app/config.js
-    working_dir: /app
+      - ./config.js:/app/config.js:ro
+      - ./.env:/app/.env:ro
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1400

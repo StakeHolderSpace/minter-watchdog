@@ -1,93 +1,132 @@
-import { Minter, SendTxParams, SetCandidateOffTxParams } from 'minter-js-sdk'
-import config from './config'
-import log from './assets/logging'
-import api from './api/node'
-import { handleError } from './assets/utils'
+import SetCandidateOffTxParams from 'minter-js-sdk/dist/cjs/tx-params/candidate-set-off'
+
+import log from '@/assets/winston'
+import tglog from './assets/tglogger'
+import node from '@/api/node'
+import { wait, errHandler } from '@/assets/utils'
+import {
+  CHAIN_ID,
+  COIN_NAME,
+  CONFIG,
+  VALIDATOR_PUB_KEY,
+  VALIDATOR_WALL_PRIV_KEY
+} from '@/assets/variables'
+
+let monitorTimerPtr = null
 
 const stack = []
-let monitorTimerPtr
 
-function remember (height, time, present) {
-  stack.push({ height, time, present })
-  if (stack.length > config.window) {
+/**
+ *
+ * @param height
+ * @param time
+ * @param signed
+ */
+function stackBlock ({ height, time, signed }) {
+  stack.push({ height, time, signed })
+
+  if (stack.length > CONFIG.errWindow) {
     stack.shift()
   }
+
+  log.debug(`Stack values: ${JSON.stringify(stack)}`)
 }
 
-function checkMissingBlocks () {
-  const signedBlocks = stack.reduce((count, { present }) => count + present, 0)
+/**
+ *
+ */
+function handleMissingBlocks () {
+  const signedBlocks = stack.reduce((count, { signed }) => count + signed, 0)
   const missedBlocks = stack.length - signedBlocks
-  const maxErrorRate = config.maxErrors
+
   const lastKnownBlock = stack.slice(-1)[0]
 
-  if (missedBlocks >= maxErrorRate) {
-     switchValidatorOff()
-  }
+  log.info(`Missed blocks ${missedBlocks} of ${CONFIG.errMaxNum}`)
 
-  return lastKnownBlock.present
-    ? log.updateStatus({ stack, missedBlocks, lastKnownBlock })
-    : log.reportMissingBlock({ missedBlock: lastKnownBlock })
-}
+  if (missedBlocks >= CONFIG.errMaxNum) {
+    switchValidatorOff()
+      .then((txHash) => {
 
-function generateTx () {
-  const params = {
-    chainId      : (config.api.testnet ? 2 : 1),
-    feeCoinSymbol: (config.api.testnet ? 'MNT' : 'BIP'),
-    message      : ''
-  }
+        log.info(`TxOFF Hash: ${txHash}`)
 
-  return new SetCandidateOffTxParams(Object.assign(params, config.txParams))
-}
+        tglog.reportValidatorShutdown()
 
-function switchValidatorOff () {
-  const tx = generateTx()
-  const sdk = new Minter({
-    apiType: config.api.type,
-    baseURL: config.api.endpoint
-  })
-
-  sdk.postTx(tx).then((txHash) => {
-    log.reportValidatorShutdown()
-    resetMainLoopAndWait()
-  })
-}
-
-function checkNextBlock () {
-  api.getStatus().then(({ data: { latest_block_height, latest_block_time } }) => {
-
-    if (stack.length && latest_block_height === stack.slice(-1)[0].height) {
-      return
-    }
-
-    api.getBlock(latest_block_height).then(({ data: { validators } }) => {
-      const candidate = validators.find((validator) => {
-        return validator.pub_key === config.txParams.publicKey
+        return wait(20 * 1000)
       })
+      .then(() => startMonitoring())
+      .catch(errHandler)
+  }
 
-      if (candidate) {
-        remember(latest_block_height, latest_block_time, candidate.signed)
-        checkMissingBlocks()
+  lastKnownBlock.signed
+    ? tglog.updateStatus({ stack, missedBlocks, lastKnownBlock })
+    : tglog.reportMissingBlock({ missedBlock: lastKnownBlock })
+}
+
+/**
+ *
+ * @returns {Promise<*>}
+ */
+const switchValidatorOff = async () => {
+
+  const oTx = new SetCandidateOffTxParams({
+    chainId   : CHAIN_ID,
+    privateKey: VALIDATOR_WALL_PRIV_KEY,
+
+    publicKey : VALIDATOR_PUB_KEY,
+    coinSymbol: COIN_NAME
+  })
+
+  log.debug(`SetOff Tx: ${JSON.stringify(oTx)}`)
+
+  return node.postTx(oTx)
+}
+
+/**
+ *
+ * @returns {Promise<T>}
+ */
+function checkNextBlock () {
+  return node.getStatus()
+    .then(({ latest_block_height, latest_block_time }) => {
+
+      log.debug(`Status latest_block_height: ${latest_block_height}`)
+
+      if (stack.length && latest_block_height === stack.slice(-1)[0].height) {
+        return Promise.reject(new Error(`Block ${latest_block_height} has been checked`))
       }
-    }).catch(handleError)
-  }).catch(handleError)
+
+      return node.getBlock(latest_block_height)
+        .then(({ validators }) => {
+          const candidate = validators.find((validator) => {
+            return validator.pub_key === VALIDATOR_PUB_KEY
+          })
+
+          log.debug(`getBlock validators: ${JSON.stringify(validators)} `)
+
+          if (!candidate) {
+            return Promise.reject(new Error(`PubKey ${VALIDATOR_PUB_KEY} is not validator`))
+          }
+
+          stackBlock({
+            height: latest_block_height,
+            time  : latest_block_time,
+            signed: candidate.signed
+          })
+
+          handleMissingBlocks()
+        })
+    })
+    .catch(errHandler)
 }
 
+/**
+ *
+ */
 function startMonitoring () {
-  if (!monitorTimerPtr) {
-    console.log('Начинаю мониторинг...')
-    monitorTimerPtr = setInterval(checkNextBlock, 2000)
-  }
-}
-
-function resetMainLoopAndWait () {
-  if (monitorTimerPtr) {
-    clearInterval(monitorTimerPtr)
-    monitorTimerPtr = null
-    setTimeout(() => {
-      stack.length = 0
-      startMonitoring()
-    }, 60000)
-  }
+  log.info('Watchdog starting...')
+  stack.length = 0
+  clearInterval(monitorTimerPtr)
+  monitorTimerPtr = setInterval(checkNextBlock, 2 * 1000)
 }
 
 startMonitoring()

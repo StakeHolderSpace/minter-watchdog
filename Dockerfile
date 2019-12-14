@@ -9,10 +9,14 @@ FROM base AS dependencies
 COPY package*.json ./
 
 RUN apk add --no-cache --virtual .gyp \
+        openssh-client \
+        ca-certificates \
         git \
         python \
         make \
         g++ \
+    &&  mkdir -p ~/.ssh \
+    && ssh-keyscan github.com >> ~/.ssh/known_hosts \
     && npm install --unsafe-perm \
     && apk del .gyp
 
