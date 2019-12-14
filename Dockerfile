@@ -41,4 +41,4 @@ USER node
 #RUN   npm install --only=production
 
 #
-CMD ["node", "-r","esm","index.js"]
+CMD ["node", "-r", "esm",  "-r", "dotenv/config" ,"index.js"]

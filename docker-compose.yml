@@ -6,7 +6,6 @@ services:
       context: .
     image: "stakeholder/watchdog:1.1.0"
     volumes:
-      - ./config.js:/app/config.js:ro
       - ./.env:/app/.env:ro
 
 networks:
