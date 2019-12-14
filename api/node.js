@@ -75,7 +75,7 @@ export const getValidators = (height, params = {}) => {
  * @returns {PromiseLike<any> | Promise<any>}
  */
 export const getCandidate = (pubKey, params = {}) => {
-  return http.get(`candidate`, { params: { pub_key: pubKey, ...params } })
+  return http.get(`/candidate`, { params: { pub_key: pubKey, ...params } })
     .then(response => {
       return response.data.result
     })
@@ -89,9 +89,23 @@ export const getCandidate = (pubKey, params = {}) => {
  */
 export const getBalance = (address, params = {}) => {
 
-  return http.get(`address`, { params: { address: address, ...params } })
+  return http.get(`/address`, { params: { address: address, ...params } })
     .then(response => {
       return response.data.result.balance
+    })
+}
+
+/**
+ *
+ * @param pubKey
+ * @param params
+ * @returns {Promise<SpeechRecognitionEvent | SVGAnimatedString | string | ArrayBuffer>}
+ */
+export const getMissedBlocks = (pubKey, params = {}) => {
+
+  return http.get(`/missed_blocks`, { params: { pub_key: pubKey, ...params } })
+    .then(response => {
+      return response.data.result
     })
 }
 
@@ -102,6 +116,6 @@ export default {
   getValidators,
   getBlock,
   getBalance,
-  getCandidate
-
+  getCandidate,
+  getMissedBlocks
 }

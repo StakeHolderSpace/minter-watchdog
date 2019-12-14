@@ -7,8 +7,8 @@ let telegramMessageId = null
 const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор*'
 const errorMessage = '\u203c\ufe0f Пропущен блок *{{missedBlock}}*\n*{{moniker}}*'
 const statusMessage =
-        'Блок *{{lastBlock}}:*\n' +
-        '{{missedBlocks}} пропущено из {{maxErrorRate}}\n' +
+        'Block *{{lastBlock}}:*\n' +
+        'Unsigned {{missedBlocks}} of {{maxErrorRate}}\n' +
         '`{{artwork}}`\n\n' +
         '*{{moniker}}* \ud83d\udd51 {{date}}'
 
