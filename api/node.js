@@ -8,7 +8,7 @@ const http = new MinterApi({
   apiType: 'node',
   baseURL: NODE_API_URL,
   chainId: CHAIN_ID,
-  timeout: 10000,
+  timeout: 5000,
   headers: {
     'Content-Type'    : 'application/json',
     'X-Project-Id'    : NODE_API_PJ_ID || '',
