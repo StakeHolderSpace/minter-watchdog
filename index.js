@@ -53,10 +53,9 @@ const handleMissingBlocks = async () => {
 /**
  *
  */
-const stopMonitoringTimer = ()=>{
+const stopMonitoringTimer = () => {
   return clearInterval(monitorTimerPtr)
 }
-
 
 /**
  *
@@ -76,9 +75,6 @@ const switchValidatorOff = async () => {
 
   return node.postTx(oTx)
 }
-
-
-
 
 /**
  *
