@@ -13,41 +13,27 @@ import {
 } from '@/assets/variables'
 
 let monitorTimerPtr = null
+let lastMissedCount = 0
 
-const stack = []
+const handleMissingBlocks = async () => {
 
-/**
- *
- * @param height
- * @param time
- * @param signed
- */
-function stackBlock ({ height, time, signed }) {
-  stack.push({ height, time, signed })
+  let
+    { missedCount, missedDiagram } = await node.getMissedBlocks(VALIDATOR_PUB_KEY)
+      .then(result => {
+        return {
+          missedCount  : parseInt(result.missed_blocks_count),
+          missedDiagram: result.missed_blocks
+        }
+      })
 
-  if (stack.length > CONFIG.errWindow) {
-    stack.shift()
-  }
+  log.info(`Missed ${missedCount} of ${CONFIG.errMaxNum}`)
 
-  log.debug(`Stack values: ${JSON.stringify(stack)}`)
-}
-
-/**
- *
- */
-function handleMissingBlocks () {
-  const signedBlocks = stack.reduce((count, { signed }) => count + signed, 0)
-  const missedBlocks = stack.length - signedBlocks
-
-  const lastKnownBlock = stack.slice(-1)[0]
-
-  log.info(`Missed blocks ${missedBlocks} of ${CONFIG.errMaxNum}`)
-
-  if (missedBlocks >= CONFIG.errMaxNum) {
-    switchValidatorOff()
+  if (missedCount >= CONFIG.errMaxNum) {
+    await switchValidatorOff()
       .then((txHash) => {
-
         log.info(`TxOFF Hash: ${txHash}`)
+
+        stopMonitoringTimer()
 
         tglog.reportValidatorShutdown()
 
@@ -57,10 +43,20 @@ function handleMissingBlocks () {
       .catch(errHandler)
   }
 
-  lastKnownBlock.signed
-    ? tglog.updateStatus({ stack, missedBlocks, lastKnownBlock })
-    : tglog.reportMissingBlock({ missedBlock: lastKnownBlock })
+  (missedCount <= lastMissedCount)
+    ? tglog.updateStatus({ missedCount, missedDiagram })
+    : tglog.reportMissingBlock()
+
+  lastMissedCount = missedCount
 }
+
+/**
+ *
+ */
+const stopMonitoringTimer = ()=>{
+  return clearInterval(monitorTimerPtr)
+}
+
 
 /**
  *
@@ -81,52 +77,16 @@ const switchValidatorOff = async () => {
   return node.postTx(oTx)
 }
 
-/**
- *
- * @returns {Promise<T>}
- */
-function checkNextBlock () {
-  return node.getStatus()
-    .then(({ latest_block_height, latest_block_time }) => {
 
-      log.debug(`Status latest_block_height: ${latest_block_height}`)
 
-      if (stack.length && latest_block_height === stack.slice(-1)[0].height) {
-        return Promise.reject(new Error(`Block ${latest_block_height} has been checked`))
-      }
-
-      return node.getBlock(latest_block_height)
-        .then(({ validators }) => {
-          const candidate = validators.find((validator) => {
-            return validator.pub_key === VALIDATOR_PUB_KEY
-          })
-
-          log.debug(`getBlock validators: ${JSON.stringify(validators)} `)
-
-          if (!candidate) {
-            return Promise.reject(new Error(`PubKey ${VALIDATOR_PUB_KEY} is not validator`))
-          }
-
-          stackBlock({
-            height: latest_block_height,
-            time  : latest_block_time,
-            signed: candidate.signed
-          })
-
-          handleMissingBlocks()
-        })
-    })
-    .catch(errHandler)
-}
 
 /**
  *
  */
 function startMonitoring () {
   log.info('Watchdog starting...')
-  stack.length = 0
-  clearInterval(monitorTimerPtr)
-  monitorTimerPtr = setInterval(checkNextBlock, 2 * 1000)
+  stopMonitoringTimer()
+  monitorTimerPtr = setInterval(() => handleMissingBlocks().catch(errHandler), 2 * 1000)
 }
 
 startMonitoring()

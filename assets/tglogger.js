@@ -5,11 +5,10 @@ import { CONFIG } from '@/assets/variables'
 let telegramMessageId = null
 
 const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор*'
-const errorMessage = '\u203c\ufe0f Пропущен блок *{{missedBlock}}*\n*{{moniker}}*'
+const errorMessage = '\u203c\ufe0f Пропущен блок *\ud83d\udd51 {{date}}*\n*{{moniker}}*'
 const statusMessage =
-        'Block *{{lastBlock}}:*\n' +
         'Unsigned {{missedBlocks}} of {{maxErrorRate}}\n' +
-        '`{{artwork}}`\n\n' +
+        '`{{diagram}}`\n\n' +
         '*{{moniker}}* \ud83d\udd51 {{date}}'
 
 function filterMarkdown (string) {
@@ -17,15 +16,6 @@ function filterMarkdown (string) {
     .replace(/\n/g, ' ')
     .replace(/\*/g, '')
     .replace(/`/g, '')
-}
-
-function stackArtwork (stack) {
-  const map = []
-  for (let item in stack) {
-    map.push(stack[item].signed ? '.' : '#')
-  }
-
-  return map.join('')
 }
 
 function updateLastMessageId (id) {
@@ -51,40 +41,51 @@ function formatDate (time) {
 }
 
 export default {
-  updateStatus ({ stack, missedBlocks, lastKnownBlock }) {
-    const text = statusMessage
-      .replace('{{moniker}}', CONFIG.telegram.msgTitle)
-      .replace('{{lastBlock}}', lastKnownBlock.height)
-      .replace('{{missedBlocks}}', missedBlocks)
-      .replace('{{maxErrorRate}}', CONFIG.errMaxNum.toString())
-      .replace('{{artwork}}', stackArtwork(stack))
-      .replace('{{date}}', formatDate(lastKnownBlock.time))
+  updateStatus: (() => {
+    let lastMessageTime = new Date(),
+        lastMissedCount = 0
 
-    // Если есть пропущенные блоки, обновляем статус каждую итерацию,
-    // иначе - раз в 10 блоков, чтобы не насиловать бот апи.
-    const shouldUpdateMessage = missedBlocks || lastKnownBlock.height % 10 == 0
+    return function ({ missedCount, missedDiagram }) {
 
-    if (telegramMessageId) {
-      if (shouldUpdateMessage) {
-        telegram.editMessageText({ text, message_id: telegramMessageId }).catch(errHandler)
+      const text = statusMessage
+        .replace('{{moniker}}', CONFIG.telegram.msgTitle)
+        .replace('{{missedBlocks}}', missedCount)
+        .replace('{{maxErrorRate}}', CONFIG.errMaxNum.toString())
+        .replace('{{diagram}}', missedDiagram)
+        .replace('{{date}}', formatDate(new Date()))
+
+      // Если есть пропущенные блоки, обновляем статус каждую итерацию,
+      // иначе - раз в 10 сек, чтобы не насиловать бот апи.
+      const shouldUpdateMessage = (missedCount > lastMissedCount) || (new Date() - lastMessageTime.getTime()) / 1000 > 0
+
+      if (telegramMessageId) {
+        if (shouldUpdateMessage) {
+          telegram.editMessageText({ text, message_id: telegramMessageId }).catch(errHandler)
+          lastMessageTime = new Date()
+        }
+      } else {
+        telegram.sendMessage({ text }).then(({ data: { result: { message_id } } }) => {
+
+          updateLastMessageId(message_id)
+          lastMessageTime = new Date()
+
+        }).catch(errHandler)
+
       }
-    } else {
 
-      telegram.sendMessage({ text }).then(({ data: { result: { message_id } } }) => {
-        updateLastMessageId(message_id)
-      }).catch(errHandler)
+      console.log(filterMarkdown(text))
+
+      lastMissedCount = missedCount
 
     }
+  })(),
 
-    console.log(filterMarkdown(text))
-  },
-
-  reportMissingBlock ({ missedBlock }) {
+  reportMissingBlock () {
     const params = {
       disable_notification: false,
       text                : errorMessage
-        .replace('{{missedBlock}}', missedBlock.height)
-        .replace('{{moniker}}',CONFIG.telegram.msgTitle)
+        .replace('{{date}}', formatDate(new Date()))
+        .replace('{{moniker}}', CONFIG.telegram.msgTitle)
     }
 
     telegram.sendMessage(params).then(({ data: { result: { message_id } } }) => {
