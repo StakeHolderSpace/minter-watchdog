@@ -4,13 +4,13 @@ import { CONFIG } from './variables'
 
 let telegramMessageId = null
 
-const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n' +
-  '\n txHash: {{tx_hash}} \n' +
+const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n\n' +
+  'txHash: {{tx_hash}} \n\n' +
   '*{{moniker}}* \ud83d\udd51 {{date}}'
 const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n *{{moniker}}* \ud83d\udd51 {{date}}'
 const statusMessage =
-        'Пропущено *{{missedBlocks}}* из {{maxMissed}} блоков \n' +
-        '\n {{diagram}} \n' +
+        'Пропущено *{{missedBlocks}}* из {{maxMissed}} блоков \n\n' +
+        '{{diagram}} \n\n' +
         '*{{moniker}}* \ud83d\udd51 {{date}}'
 
 function filterMarkdown (string) {
