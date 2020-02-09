@@ -4,13 +4,13 @@ import { CONFIG } from './variables'
 
 let telegramMessageId = null
 
-const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n ' +
-  'txHash: {{tx_hash}} \n\n' +
+const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n' +
+  '\n txHash: {{tx_hash}} \n' +
   '*{{moniker}}* \ud83d\udd51 {{date}}'
 const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n *{{moniker}}* \ud83d\udd51 {{date}}'
 const statusMessage =
         'Пропущено *{{missedBlocks}}* из {{maxMissed}} блоков \n' +
-        '{{diagram}} \n\n' +
+        '\n {{diagram}} \n' +
         '*{{moniker}}* \ud83d\udd51 {{date}}'
 
 function filterMarkdown (string) {
@@ -49,7 +49,7 @@ export default {
   updateStatus: (() => {
     let lastMessageTime = new Date()
 
-    return function ({ missedCount, maxMissed, missedDiagram }) {
+    return function updateStatus ({ missedCount, maxMissed, missedDiagram }) {
 
       const text = statusMessage
         .replace('{{missedBlocks}}', missedCount)
@@ -60,7 +60,7 @@ export default {
 
       // Если есть пропущенные блоки, обновляем статус каждую итерацию,
       // иначе - раз в 5 сек, чтобы не насиловать бот апи.
-      const canUpdateMessage = (new Date().getTime() - lastMessageTime.getTime()) / 1000 >= 10
+      const canUpdateMessage = (new Date().getTime() - lastMessageTime.getTime()) / 1000 >= 5
 
       // если ранее сообщение отправляли , то меняем в нем текст
       if (telegramMessageId) {
@@ -79,7 +79,6 @@ export default {
           .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
           .finally(() => { lastMessageTime = new Date() })
       }
-
     }
   })(),
 
