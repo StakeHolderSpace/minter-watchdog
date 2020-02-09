@@ -1,10 +1,10 @@
-version: '3.7'
+version: '3.3'
 services:
   node:
     restart: unless-stopped
     build:
       context: .
-    image: "stakeholder/watchdog:1.1.0"
+    image: "stakeholder/watchdog:2.0"
     volumes:
       - ./.env:/app/.env:ro
 

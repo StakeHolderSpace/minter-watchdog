@@ -4,12 +4,12 @@ import { CONFIG } from './variables'
 
 let telegramMessageId = null
 
-const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n *\ud83d\udd51 {{date}}* {{moniker}}'
-const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n *\ud83d\udd51 {{date}}* {{moniker}}*'
+const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n \ud83d\udd51 {{date}} *{{moniker}}*'
+const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n \ud83d\udd51 {{date}} *{{moniker}}*'
 const statusMessage =
         'Пропущено *{{missedBlocks}}* из {{maxMissed}} блоков \n' +
         '{{diagram}} \n\n' +
-        '*\ud83d\udd51 {{date}}* {{moniker}}*'
+        '\ud83d\udd51 {{date}} *{{moniker}}*'
 
 function filterMarkdown (string) {
   return string
@@ -65,7 +65,7 @@ export default {
         if (canUpdateMessage) {
           telegram
             .editMessageText({ text, message_id: telegramMessageId })
-            .catch(err => {console.log(`Telegram err:`, err.message)})
+            .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
             .finally(() => { lastMessageTime = new Date() })
         }
       }
@@ -74,7 +74,7 @@ export default {
         telegram
           .sendMessage({ text })
           .then(({ data: { result: { message_id } } }) => updateLastMessageId(message_id))
-          .catch(err => {console.log(`Telegram err:`, err.message)})
+          .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
           .finally(() => { lastMessageTime = new Date() })
       }
 
@@ -95,7 +95,7 @@ export default {
     telegram
       .sendMessage(params)
       .then(({ data: { result: { message_id } } }) => updateLastMessageId(message_id))
-      .catch(err => {console.log(`Telegram err:`, err.message)})
+      .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
   },
 
   reportValidatorShutdown () {
@@ -109,6 +109,6 @@ export default {
     telegram
       .sendMessage(params)
       .then(({ data: { result: { message_id } } }) => resetLastMessageId(message_id))
-      .catch(err => {console.log(`Telegram err:`, err.message)})
+      .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
   }
 }
