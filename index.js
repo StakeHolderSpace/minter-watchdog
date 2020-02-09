@@ -132,7 +132,7 @@ const logMissedBlockStatus = (() => {
 const logValidatorShutdown = (txHash) => {
   log.info(`TxOFF Hash: ${txHash}`)
 
-  tglog.reportValidatorShutdown()
+  tglog.reportValidatorShutdown({txHash})
 
 }
 

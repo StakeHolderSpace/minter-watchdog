@@ -4,7 +4,9 @@ import { CONFIG } from './variables'
 
 let telegramMessageId = null
 
-const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n *{{moniker}}* \ud83d\udd51 {{date}}'
+const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n ' +
+  'txHash: {{tx_hash}} \n\n' +
+  '*{{moniker}}* \ud83d\udd51 {{date}}'
 const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n *{{moniker}}* \ud83d\udd51 {{date}}'
 const statusMessage =
         'Пропущено *{{missedBlocks}}* из {{maxMissed}} блоков \n' +
@@ -98,10 +100,11 @@ export default {
       .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
   },
 
-  reportValidatorShutdown () {
+  reportValidatorShutdown ({txHash}) {
     const params = {
       disable_notification: false,
       text                : shutdownMessage
+        .replace('{{tx_hash}}', txHash.toString())
         .replace('{{date}}', formatDate(new Date()))
         .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
     }
