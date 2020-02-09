@@ -4,12 +4,12 @@ import { CONFIG } from './variables'
 
 let telegramMessageId = null
 
-const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n \ud83d\udd51 {{date}} *{{moniker}}*'
-const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n \ud83d\udd51 {{date}} *{{moniker}}*'
+const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n *{{moniker}}* \ud83d\udd51 {{date}}'
+const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n *{{moniker}}* \ud83d\udd51 {{date}}'
 const statusMessage =
         'Пропущено *{{missedBlocks}}* из {{maxMissed}} блоков \n' +
         '{{diagram}} \n\n' +
-        '\ud83d\udd51 {{date}} *{{moniker}}*'
+        '*{{moniker}}* \ud83d\udd51 {{date}}'
 
 function filterMarkdown (string) {
   return string
@@ -52,13 +52,13 @@ export default {
       const text = statusMessage
         .replace('{{missedBlocks}}', missedCount)
         .replace('{{maxMissed}}', maxMissed.toString())
-        .replace('{{diagram}}', missedDiagram)
+        .replace('{{diagram}}', missedDiagram.replace('/_/gi','.'))
         .replace('{{date}}', formatDate(new Date()))
         .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
 
       // Если есть пропущенные блоки, обновляем статус каждую итерацию,
       // иначе - раз в 5 сек, чтобы не насиловать бот апи.
-      const canUpdateMessage = (new Date().getTime() - lastMessageTime.getTime()) / 1000 > 3
+      const canUpdateMessage = (new Date().getTime() - lastMessageTime.getTime()) / 1000 >= 10
 
       // если ранее сообщение отправляли , то меняем в нем текст
       if (telegramMessageId) {
