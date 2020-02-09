@@ -1,6 +1,6 @@
 import axios from 'axios'
-import { errHandler } from '@/assets/utils'
-import { CONFIG } from '@/assets/variables'
+import { errHandler } from '../assets/utils'
+import { CONFIG } from '../assets/variables'
 
 const http = axios.create({
   baseURL: `https://api.telegram.org/bot${CONFIG.telegram.botKey}`
@@ -40,18 +40,18 @@ export default {
   sendMessage ({ ...args }) {
     return http.get('sendMessage', {
       params: getRequestParams(args)
-    }).catch(errHandler)
+    })
   },
 
   editMessageText ({ ...args }) {
     return http.get('editMessageText', {
       params: getRequestParams(args)
-    }).catch(errHandler)
+    })
   },
 
   deleteMessage ({ ...args }) {
     return http.get('deleteMessage', {
       params: getRequestParams(args)
-    }).catch(errHandler)
+    })
   }
 }

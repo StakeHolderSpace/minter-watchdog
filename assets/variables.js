@@ -32,8 +32,7 @@ export const TG_BOT_KEY = process.env.APP_TG_BOT_KEY || ''
 export const TG_CHAT_ID = process.env.APP_TG_CHAT_ID || ''
 export const TG_MSG_TITLE = process.env.APP_TG_MSG_TITLE || 'watchdog'
 
-export const ERRORS_MAX = process.env.APP_ERRORS_MAX || 6
-export const ERRORS_WINDOW = process.env.APP_ERRORS_WINDOW || 24
+export const MISSED_MAX = process.env.APP_MISSED_MAX || 5
 
 export const TX_TIMEOUT = 8
 
@@ -41,14 +40,13 @@ export const CONFIG = {
   node     : {
     baseURL: NODE_API_URL
   },
-  errWindow: parseInt(ERRORS_WINDOW),
-  errMaxNum: parseInt(ERRORS_MAX),
+  maxMissed: parseInt(MISSED_MAX),
   validator: {
     privateKey: VALIDATOR_WALL_PRIV_KEY,
     publicKey : VALIDATOR_PUB_KEY
   },
   telegram : {
-    msgTitle: TG_MSG_TITLE,
+    botMsgSign: TG_MSG_TITLE,
     botKey  : TG_BOT_KEY,
     chatId  : parseInt(TG_CHAT_ID)
   }

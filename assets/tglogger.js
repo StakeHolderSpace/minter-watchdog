@@ -1,15 +1,15 @@
-import telegram from '@/api/telegram'
-import { errHandler } from '@/assets/utils'
-import { CONFIG } from '@/assets/variables'
+import telegram from '../api/telegram'
+import { errHandler } from './utils'
+import { CONFIG } from './variables'
 
 let telegramMessageId = null
 
-const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор*'
-const errorMessage = '\u203c\ufe0f Пропущен блок *\ud83d\udd51 {{date}}*\n*{{moniker}}*'
+const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n *\ud83d\udd51 {{date}}* {{moniker}}'
+const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n *\ud83d\udd51 {{date}}* {{moniker}}*'
 const statusMessage =
-        'Unsigned {{missedBlocks}} of {{maxErrorRate}}\n' +
-        '`{{diagram}}`\n\n' +
-        '*{{moniker}}* \ud83d\udd51 {{date}}'
+        'Пропущено *{{missedBlocks}}* из {{maxMissed}} блоков \n' +
+        '{{diagram}} \n\n' +
+        '*\ud83d\udd51 {{date}}* {{moniker}}*'
 
 function filterMarkdown (string) {
   return string
@@ -24,7 +24,7 @@ function updateLastMessageId (id) {
   }
 }
 
-function resetLastMessageid (id) {
+function resetLastMessageId (id) {
   if (id > telegramMessageId || 0) {
     telegramMessageId = null
   }
@@ -41,70 +41,74 @@ function formatDate (time) {
 }
 
 export default {
+  /**
+   *
+   */
   updateStatus: (() => {
-    let lastMessageTime = new Date(),
-        lastMissedCount = 0
+    let lastMessageTime = new Date()
 
-    return function ({ missedCount, missedDiagram }) {
+    return function ({ missedCount, maxMissed, missedDiagram }) {
 
       const text = statusMessage
-        .replace('{{moniker}}', CONFIG.telegram.msgTitle)
         .replace('{{missedBlocks}}', missedCount)
-        .replace('{{maxErrorRate}}', CONFIG.errMaxNum.toString())
+        .replace('{{maxMissed}}', maxMissed.toString())
         .replace('{{diagram}}', missedDiagram)
         .replace('{{date}}', formatDate(new Date()))
+        .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
 
       // Если есть пропущенные блоки, обновляем статус каждую итерацию,
-      // иначе - раз в 10 сек, чтобы не насиловать бот апи.
-      const shouldUpdateMessage = (missedCount > lastMissedCount) || (new Date() - lastMessageTime.getTime()) / 1000 > 0
+      // иначе - раз в 5 сек, чтобы не насиловать бот апи.
+      const canUpdateMessage = (new Date().getTime() - lastMessageTime.getTime()) / 1000 > 3
 
+      // если ранее сообщение отправляли , то меняем в нем текст
       if (telegramMessageId) {
-        if (shouldUpdateMessage) {
-          telegram.editMessageText({ text, message_id: telegramMessageId }).catch(errHandler)
-          lastMessageTime = new Date()
+        if (canUpdateMessage) {
+          telegram
+            .editMessageText({ text, message_id: telegramMessageId })
+            .catch(err => {console.log(`Telegram err:`, err.message)})
+            .finally(() => { lastMessageTime = new Date() })
         }
-      } else {
-        telegram.sendMessage({ text }).then(({ data: { result: { message_id } } }) => {
-
-          updateLastMessageId(message_id)
-          lastMessageTime = new Date()
-
-        }).catch(errHandler)
-
       }
-
-      console.log(filterMarkdown(text))
-
-      lastMissedCount = missedCount
+      // Если это первое сообщение, то просто его отправляем
+      else {
+        telegram
+          .sendMessage({ text })
+          .then(({ data: { result: { message_id } } }) => updateLastMessageId(message_id))
+          .catch(err => {console.log(`Telegram err:`, err.message)})
+          .finally(() => { lastMessageTime = new Date() })
+      }
 
     }
   })(),
 
+  /**
+   *
+   */
   reportMissingBlock () {
     const params = {
       disable_notification: false,
-      text                : errorMessage
+      text                : missedBlockMessage
         .replace('{{date}}', formatDate(new Date()))
-        .replace('{{moniker}}', CONFIG.telegram.msgTitle)
+        .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
     }
 
-    telegram.sendMessage(params).then(({ data: { result: { message_id } } }) => {
-      resetLastMessageid(message_id)
-    }).catch(errHandler)
-
-    console.error(filterMarkdown(params.text))
+    telegram
+      .sendMessage(params)
+      .then(({ data: { result: { message_id } } }) => updateLastMessageId(message_id))
+      .catch(err => {console.log(`Telegram err:`, err.message)})
   },
 
   reportValidatorShutdown () {
     const params = {
-      text                : shutdownMessage,
-      disable_notification: false
+      disable_notification: false,
+      text                : shutdownMessage
+        .replace('{{date}}', formatDate(new Date()))
+        .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
     }
 
-    telegram.sendMessage(params).then(({ data: { result: { message_id } } }) => {
-      resetLastMessageid(message_id)
-    }).catch(errHandler)
-
-    console.error(filterMarkdown(params.text))
+    telegram
+      .sendMessage(params)
+      .then(({ data: { result: { message_id } } }) => resetLastMessageId(message_id))
+      .catch(err => {console.log(`Telegram err:`, err.message)})
   }
 }

@@ -1,60 +1,57 @@
 import SetCandidateOffTxParams from 'minter-js-sdk/dist/cjs/tx-params/candidate-set-off'
 
-import log from '@/assets/winston'
+import log from './assets/winston'
 import tglog from './assets/tglogger'
-import node from '@/api/node'
-import { wait, errHandler } from '@/assets/utils'
+import fslog from './assets/filelogger'
+import node from './api/node'
+import { wait, errHandler } from './assets/utils'
 import {
   CHAIN_ID,
   COIN_NAME,
   CONFIG,
   VALIDATOR_PUB_KEY,
   VALIDATOR_WALL_PRIV_KEY
-} from '@/assets/variables'
+} from './assets/variables'
 
-let monitorTimerPtr = null
-let lastMissedCount = 0
-
-const handleMissingBlocks = async () => {
-
-  let
-    { missedCount, missedDiagram } = await node.getMissedBlocks(VALIDATOR_PUB_KEY)
-      .then(result => {
-        return {
-          missedCount  : parseInt(result.missed_blocks_count),
-          missedDiagram: result.missed_blocks
-        }
-      })
-
-  log.info(`Missed ${missedCount} of ${CONFIG.errMaxNum}`)
-
-  if (missedCount >= CONFIG.errMaxNum) {
-    await switchValidatorOff()
-      .then((txHash) => {
-        log.info(`TxOFF Hash: ${txHash}`)
-
-        stopMonitoringTimer()
-
-        tglog.reportValidatorShutdown()
-
-        return wait(20 * 1000)
-      })
-      .then(() => startMonitoring())
-      .catch(errHandler)
-  }
-
-  (missedCount <= lastMissedCount)
-    ? tglog.updateStatus({ missedCount, missedDiagram })
-    : tglog.reportMissingBlock()
-
-  lastMissedCount = missedCount
-}
+let dogTimer = null
+const watchingInterval = 3
+const tarpitOnSetOffTimeout = 10
 
 /**
  *
+ * @returns {Promise<*|Promise<void>>}
  */
-const stopMonitoringTimer = () => {
-  return clearInterval(monitorTimerPtr)
+const watchMissingBlocks = async () => {
+  let { missedCount, missedDiagram } = await node.getMissedBlocks(VALIDATOR_PUB_KEY)
+    .then(result => {
+      return {
+        missedCount  : parseInt(result.missed_blocks_count),
+        missedDiagram: result.missed_blocks
+      }
+    })
+    .catch(err => {
+      if (err.error && err.error.code && parseInt(err.error.code) === 404) {
+        return {
+          missedCount  : 0,
+          missedDiagram: err.error.message ? err.error.message.toUpperCase() : '-- Unknown error --'
+        }
+      }
+      throw err
+    })
+
+  if (missedCount >= CONFIG.maxMissed) {
+    return switchValidatorOff()
+      .then((txHash) => logValidatorShutdown(txHash))
+      .then(() => wait(tarpitOnSetOffTimeout * 1000))
+      .catch(err => {
+        if (err.error && err.error.data && 0 <= err.error.data.indexOf('already exists')) {
+          return wait(tarpitOnSetOffTimeout * 1.5 * 1000)
+        }
+        throw err
+      })
+  }
+
+  return logMissedBlockStatus({ missedCount, missedDiagram })
 }
 
 /**
@@ -78,11 +75,69 @@ const switchValidatorOff = async () => {
 
 /**
  *
+ * @returns {Promise<T>}
  */
-function startMonitoring () {
+const startWatching = async () => {
   log.info('Watchdog starting...')
-  stopMonitoringTimer()
-  monitorTimerPtr = setInterval(() => handleMissingBlocks().catch(errHandler), 2 * 1000)
+  return wait(10)
+    .then(() => {
+
+      dogTimer = setTimeout(function watch () {
+        return watchMissingBlocks()
+          .catch(errHandler)
+          .finally(() => {
+            clearTimeout(dogTimer)
+            dogTimer = setTimeout(watch, watchingInterval * 1000)
+          })
+      }, watchingInterval * 1000)
+
+      return dogTimer
+    })
+    .then((dogTimer) => logStartedWatchdog())
 }
 
-startMonitoring()
+/**
+ *
+ */
+const logStartedWatchdog = () => {
+  log.info('Watchdog started!')
+
+  tglog.updateStatus({ missedCount: 0, missedDiagram: 'Watchdog started', maxMissed: CONFIG.maxMissed })
+}
+
+/**
+ *
+ * @type {Function}
+ */
+const logMissedBlockStatus = (() => {
+  let lastMissedCount = 0
+
+  return async ({ missedCount, missedDiagram }) => {
+
+    let isMissedGrown = (lastMissedCount < missedCount)
+
+    log.info(`Missed ${missedCount} of ${CONFIG.maxMissed} (${missedDiagram})`)
+
+    // Telegram log
+    isMissedGrown
+      ? tglog.reportMissingBlock()
+      : tglog.updateStatus({ missedCount, missedDiagram, maxMissed: CONFIG.maxMissed })
+
+    // File log
+    //isMissedGrow ? fslog.findAndLogMissed(missedCount - lastMissedCount) : null
+
+    lastMissedCount = missedCount
+  }
+})()
+
+/**
+ *
+ */
+const logValidatorShutdown = (txHash) => {
+  log.info(`TxOFF Hash: ${txHash}`)
+
+  tglog.reportValidatorShutdown()
+
+}
+
+startWatching().catch(errHandler)

@@ -1,4 +1,4 @@
-import log from '@/assets/winston'
+import log from './winston'
 
 /**
  *

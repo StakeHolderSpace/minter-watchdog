@@ -2,7 +2,7 @@ import MinterApi from 'minter-js-sdk/dist/cjs/api'
 import PostTx from 'minter-js-sdk/dist/cjs/api/post-tx'
 import GetNonce from 'minter-js-sdk/dist/cjs/api/get-nonce'
 
-import { CHAIN_ID, NODE_API_URL, NODE_API_PJ_ID, NODE_API_PJ_SECRET } from '@/assets/variables'
+import { CHAIN_ID, NODE_API_URL, NODE_API_PJ_ID, NODE_API_PJ_SECRET } from '../assets/variables'
 
 const http = new MinterApi({
   apiType: 'node',
@@ -46,6 +46,62 @@ export const postTx = new PostTx(http)
  */
 export const getNonce = new GetNonce(http)
 
+/**
+ *
+ * @param address
+ * @param height
+ */
+export const getAddress = ({ address, height }) => {
+
+  if (!address) {
+    return Promise.reject(new Error('Address empty'))
+  }
+
+  const params = { address, height }
+
+  return http.get('address', { params })
+    .then((response) => {
+      return response.data.result
+    })
+}
+
+/**
+ *
+ * @param addresses
+ * @param height
+ */
+export const getAddresses = ({ addresses, height }) => {
+  const _addresses = Array.from(addresses)
+
+  if (!addresses || !_addresses.length) {
+    return Promise.reject(new Error('Address list empty'))
+  }
+
+  const params = { addresses: `[${_addresses.map((i) => '"' + i.toString() + '"').join(',')}]`, height }
+
+  return http.get('addresses', { params })
+    .then((response) => {
+      return response.data.result
+    })
+}
+
+/**
+ *
+ * @param height
+ * @param params
+ * @returns {PromiseLike<any> | Promise<any>}
+ */
+export const getBlock = (height, params = {}) => {
+  return http.get('/block', { params: { height, ...params } })
+    .then(response => {
+      return response.data.result
+    })
+}
+
+/**
+ *
+ * @returns {PromiseLike<any> | Promise<any>}
+ */
 export const getStatus = () => {
   return http.get('/status')
     .then(response => {
@@ -54,13 +110,12 @@ export const getStatus = () => {
 
 }
 
-export const getBlock = (height, params = {}) => {
-  return http.get('/block', { params: { height, ...params } })
-    .then(response => {
-      return response.data.result
-    })
-}
-
+/**
+ *
+ * @param height
+ * @param params
+ * @returns {PromiseLike<any> | Promise<any>}
+ */
 export const getValidators = (height, params = {}) => {
   return http.get('/validators', { params: { height, ...params } })
     .then(response => {
@@ -109,9 +164,12 @@ export const getMissedBlocks = (pubKey, params = {}) => {
     })
 }
 
+
 export default {
   postTx,
   getNonce,
+  getAddress,
+  getAddresses,
   getStatus,
   getValidators,
   getBlock,
