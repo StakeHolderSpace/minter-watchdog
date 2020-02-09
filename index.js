@@ -2,7 +2,6 @@ import SetCandidateOffTxParams from 'minter-js-sdk/dist/cjs/tx-params/candidate-
 
 import log from './assets/winston'
 import tglog from './assets/tglogger'
-import fslog from './assets/filelogger'
 import node from './api/node'
 import { wait, errHandler } from './assets/utils'
 import {
