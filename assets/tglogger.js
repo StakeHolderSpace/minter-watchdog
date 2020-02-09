@@ -52,7 +52,7 @@ export default {
       const text = statusMessage
         .replace('{{missedBlocks}}', missedCount)
         .replace('{{maxMissed}}', maxMissed.toString())
-        .replace('{{diagram}}', missedDiagram.replace('/_/gi','.'))
+        .replace('{{diagram}}', missedDiagram.replace(/_/gi,'-').replace(/x/gi,'#'))
         .replace('{{date}}', formatDate(new Date()))
         .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
 
