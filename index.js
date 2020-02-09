@@ -123,9 +123,6 @@ const logMissedBlockStatus = (() => {
       ? tglog.reportMissingBlock()
       : tglog.updateStatus({ missedCount, missedDiagram, maxMissed: CONFIG.maxMissed })
 
-    // File log
-    //isMissedGrow ? fslog.findAndLogMissed(missedCount - lastMissedCount) : null
-
     lastMissedCount = missedCount
   }
 })()
