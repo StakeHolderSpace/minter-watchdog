@@ -54,13 +54,12 @@ export default {
       const text = statusMessage
         .replace('{{missedBlocks}}', missedCount)
         .replace('{{maxMissed}}', maxMissed.toString())
-        .replace('{{diagram}}', missedDiagram.replace(/_/gi,' - ').replace(/x/gi,' # '))
+        .replace('{{diagram}}', missedDiagram.replace(/_/gi,'- ').replace(/x/gi,'# '))
         .replace('{{date}}', formatDate(new Date()))
         .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
 
-      // Если есть пропущенные блоки, обновляем статус каждую итерацию,
-      // иначе - раз в 5 сек, чтобы не насиловать бот апи.
-      const canUpdateMessage = (new Date().getTime() - lastMessageTime.getTime()) / 1000 >= 5
+      // обновляем статус раз в 10 сек, чтобы не насиловать бот апи.
+      const canUpdateMessage = (new Date().getTime() - lastMessageTime.getTime()) / 1000 >= 10
 
       // если ранее сообщение отправляли , то меняем в нем текст
       if (telegramMessageId) {
