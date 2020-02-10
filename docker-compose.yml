@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     build:
       context: .
-    image: "stakeholder/watchdog:2.0"
+    image: "stakeholder/watchdog:2.0.0"
     volumes:
       - ./.env:/app/.env:ro
 
