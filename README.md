@@ -22,16 +22,13 @@ git clone https://github.com/StakeHolderSpace/minter-watchdog.git
 
 cd minter-watchdog
 
-docker-compose build && docker system prune -f
-
 cp ./.env.example ./.env
 
 # Заполняем настройки в .env, затем:
+sudo sh -c 'chown 1000:1000 ./.env && chmod 600 ./.env'
 
-chown 1000:1000 ./.env && chmod 600 ./.env
+docker-compose up --build -d
 
-
-docker-compose up -d
-
+docker system prune -f
 ```
 
