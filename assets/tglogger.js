@@ -4,7 +4,7 @@ import { CONFIG } from './variables'
 
 let telegramMessageId = null
 
-const shutdownMessage = '\ud83d\uded1 *Выключаю валидатор* \n\n' +
+const successCmdMsg = '\ud83d\uded1 *Команда отправлена:* \n\n' +
   'txHash: {{tx_hash}} \n\n' +
   '*{{moniker}}* \ud83d\udd51 {{date}}'
 const missedBlockMessage = '\u203c\ufe0f Пропущен блок \n *{{moniker}}* \ud83d\udd51 {{date}}'
@@ -48,8 +48,10 @@ export default {
    */
   updateStatus: (() => {
     let lastMessageTime = new Date()
-
-    return function updateStatus ({ missedCount, maxMissed, missedDiagram }) {
+    /**
+     *
+     */
+    return async ({ missedCount, maxMissed, missedDiagram })=> {
 
       const text = statusMessage
         .replace('{{missedBlocks}}', missedCount)
@@ -64,15 +66,16 @@ export default {
       // если ранее сообщение отправляли , то меняем в нем текст
       if (telegramMessageId) {
         if (canUpdateMessage) {
-          telegram
+          return telegram
             .editMessageText({ text, message_id: telegramMessageId })
             .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
             .finally(() => { lastMessageTime = new Date() })
         }
+        return  Promise.resolve()
       }
       // Если это первое сообщение, то просто его отправляем
       else {
-        telegram
+        return telegram
           .sendMessage({ text })
           .then(({ data: { result: { message_id } } }) => updateLastMessageId(message_id))
           .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
@@ -92,22 +95,23 @@ export default {
         .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
     }
 
-    telegram
+    return telegram
       .sendMessage(params)
       .then(({ data: { result: { message_id } } }) => updateLastMessageId(message_id))
       .catch(err => {console.log(`Telegram err:`, err.description || err.message)})
   },
 
-  reportValidatorShutdown ({txHash}) {
+
+  reportSuccessCmd({txHash}) {
     const params = {
       disable_notification: false,
-      text                : shutdownMessage
+      text                : successCmdMsg
         .replace('{{tx_hash}}', txHash.toString())
         .replace('{{date}}', formatDate(new Date()))
         .replace('{{moniker}}', CONFIG.telegram.botMsgSign)
     }
 
-    telegram
+    return telegram
       .sendMessage(params)
       .then(({ data: { result: { message_id } } }) => resetLastMessageId(message_id))
       .catch(err => {console.log(`Telegram err:`, err.description || err.message)})

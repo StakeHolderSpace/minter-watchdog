@@ -1,14 +1,14 @@
 {
-	"name": "stakeholder-watchdog",
-	"version": "2.0.0",
+	"name": "minter-watchdog",
+	"version": "3.0.0",
 	"description": "",
 	"main": "index.js",
 	"scripts": {
 		"test": "nodemon -r esm -r dotenv/config test.js",
 		"start": "node -r esm  -r dotenv/config index.js",
 		"dev": "nodemon -r esm -r dotenv/config index.js",
-		"postinstall": "link-module-alias",
-		"preinstall": "command -v link-module-alias && link-module-alias clean || true"
+		"postinstall": "",
+		"preinstall": ""
 	},
 	"author": "",
 	"license": "ISC",
@@ -16,15 +16,12 @@
 		"axios": "^0.19.2",
 		"dotenv": "^8.2.0",
 		"esm": "^3.2.25",
-		"minter-js-sdk": "^0.28.0",
 		"json-stringify-safe": "^5.0.1",
-		"link-module-alias": "^1.2.0",
+		"minter-js-sdk": "^0.31.0",
+		"minterjs-wallet": "^4.0.4",
 		"winston": "^3.2.1"
 	},
-	"_moduleAliases": {
-		"@": "."
-	},
 	"devDependencies": {
-		"nodemon": "^2.0.2"
+		"nodemon": "^2.0.3"
 	}
 }

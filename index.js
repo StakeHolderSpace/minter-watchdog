@@ -6,25 +6,25 @@ import node from './api/node'
 import { wait, errHandler } from './assets/utils'
 import {
   CHAIN_ID,
-  COIN_NAME,
+  BASE_COIN_NAME,
   CONFIG,
+  TX_TIMEOUT,
   VALIDATOR_PUB_KEY,
-  VALIDATOR_WALL_PRIV_KEY
+  WALLET
 } from './assets/variables'
 
 let dogTimer = null
-const watchingInterval = 3
-const tarpitOnSetOffTimeout = 10
+const txWaitTimeout = TX_TIMEOUT
 
 /**
  *
  * @returns {Promise<*|Promise<void>>}
  */
-const watchMissingBlocks = async () => {
-  let { missedCount, missedDiagram } = await node.getMissedBlocks(VALIDATOR_PUB_KEY)
+const getMissedBlocks = async (validatorPubKey) => {
+  return node.getMissedBlocks(validatorPubKey)
     .then(result => {
       return {
-        missedCount  : parseInt(result.missed_blocks_count),
+        missedCount  : parseInt(result.missed_blocks_count)/*Math.floor(Math.random() * Math.floor(12))*/,
         missedDiagram: result.missed_blocks
       }
     })
@@ -37,52 +37,71 @@ const watchMissingBlocks = async () => {
       }
       throw err
     })
-
-  if (missedCount >= CONFIG.maxMissed) {
-    return switchValidatorOff()
-      .then((txHash) => logValidatorShutdown(txHash))
-      .then(() => wait(tarpitOnSetOffTimeout * 1000))
-      .catch(err => {
-        if (err.error && err.error.data && 0 <= err.error.data.indexOf('already exists')) {
-          return wait(tarpitOnSetOffTimeout * 1.5 * 1000)
-        }
-        throw err
-      })
-  }
-
-  return logMissedBlockStatus({ missedCount, missedDiagram })
 }
 
 /**
  *
  * @returns {Promise<*>}
  */
-const switchValidatorOff = async () => {
+const sendCmdTx = async () => {
 
   const oTx = new SetCandidateOffTxParams({
     chainId   : CHAIN_ID,
-    privateKey: VALIDATOR_WALL_PRIV_KEY,
+    privateKey: WALLET.getPrivateKeyString(),
 
-    publicKey : VALIDATOR_PUB_KEY,
-    coinSymbol: COIN_NAME
+    publicKey    : VALIDATOR_PUB_KEY,
+    feeCoinSymbol: BASE_COIN_NAME
   })
 
-  log.debug(`SetOff Tx: ${JSON.stringify(oTx)}`)
-
-  return node.postTx(oTx)
+  return node.postTx(oTx) /*'======= TX HASH ========='*/
 }
 
 /**
  *
  * @returns {Promise<T>}
  */
-const startWatching = async () => {
-  log.info('Watchdog starting...')
+const Run = async () => {
+  const watchingInterval = txWaitTimeout
+
   return wait(10)
     .then(() => {
+      let startMsg = `
+===== Watchdog starting... =================================
+Owner Address    :   ${WALLET.getAddressString()}
+PubKey           :   ${VALIDATOR_PUB_KEY}
+Threshold Missed :   ${CONFIG.maxMissed}
+============================================================`
+      startMsg.split('\n').forEach(log.info)
 
       dogTimer = setTimeout(function watch () {
-        return watchMissingBlocks()
+        let pubKey = VALIDATOR_PUB_KEY.toString()
+        let shortName = pubKey.substr(0, 8) + '...' + pubKey.substr(-8)
+        let preMsg = `[${shortName}]:`
+        log.info(`Watching for: ${preMsg}`)
+        return getMissedBlocks(pubKey)
+          .then(({ missedCount, missedDiagram }) => {
+
+            logMissedBlockStatus({ missedCount, missedDiagram, preMsg }).catch(errHandler)
+
+            if (missedCount >= CONFIG.maxMissed) {
+              // НЕ ставим await т.к. транзакция критичная. Лучше пусть будет дубль транщзакции из-за того что не
+              // ждали ответа, чем штраф
+              return sendCmdTx()
+                .then((txHash) => logCmdSuccess({ txHash, preMsg }))
+                .catch(err => {
+                  if (err.error && err.error.data && 0 <= err.error.data.indexOf('already exists')) {
+                    log.info('SetOff FAILED : Tx already exists')
+                    return
+                  }
+                  if (err.error && err.error.tx_result && err.error.tx_result.log) {
+                    log.error('SetOff FAILED : ' + err.error.tx_result.log)
+                    return
+                  }
+
+                  throw err
+                })
+            }
+          })
           .catch(errHandler)
           .finally(() => {
             clearTimeout(dogTimer)
@@ -90,52 +109,53 @@ const startWatching = async () => {
           })
       }, watchingInterval * 1000)
 
-      return dogTimer
+      return Promise.resolve()
     })
-    .then((dogTimer) => logStartedWatchdog())
+    .then(logWatchdogStarted)
 }
 
+/*-------------------------------------------------------*/
 /**
  *
+ * @returns {Promise<*|void>}
  */
-const logStartedWatchdog = () => {
+const logWatchdogStarted = () => {
   log.info('Watchdog started!')
 
-  tglog.updateStatus({ missedCount: 0, missedDiagram: 'Watchdog started', maxMissed: CONFIG.maxMissed })
+  return tglog.updateStatus({
+    missedCount  : 0,
+    missedDiagram: 'Watchdog started',
+    maxMissed    : CONFIG.maxMissed
+  }).catch(errHandler)
 }
 
 /**
  *
- * @type {Function}
  */
 const logMissedBlockStatus = (() => {
   let lastMissedCount = 0
 
-  return async ({ missedCount, missedDiagram }) => {
+  return async ({ missedCount, missedDiagram, preMsg = '' }) => {
 
     let isMissedGrown = (lastMissedCount < missedCount)
+    lastMissedCount = missedCount
 
-    log.info(`Missed ${missedCount} of ${CONFIG.maxMissed} (${missedDiagram})`)
+    log.info(`${preMsg} Missed ${missedCount} of ${CONFIG.maxMissed} (${missedDiagram})`)
 
     // Telegram log
-    isMissedGrown
+    return isMissedGrown
       ? tglog.reportMissingBlock()
-      : tglog.updateStatus({ missedCount, missedDiagram, maxMissed: CONFIG.maxMissed })
-
-    lastMissedCount = missedCount
+      : tglog.updateStatus({ missedCount, missedDiagram: `${preMsg}\n ${missedDiagram}`, maxMissed: CONFIG.maxMissed })
   }
 })()
 
 /**
  *
  */
-const logValidatorShutdown = (txHash) => {
-  log.info(`TxOFF Hash: ${txHash}`)
+const logCmdSuccess = ({ txHash, preMsg = '' }) => {
+  log.warn(`${preMsg} SET OFF Command sent | Hash: ${txHash}`)
 
-  //let msgTxHash = `${CONFIG.node.baseURL}/transaction?hash=${txHash}`
-
-  tglog.reportValidatorShutdown({ txHash })
-
+  return tglog.reportSuccessCmd({ txHash }).catch(errHandler)
 }
 
-startWatching().catch(errHandler)
+Run().catch(errHandler)
