@@ -1,17 +1,10 @@
-import SetCandidateOffTxParams from 'minter-js-sdk/dist/cjs/tx-params/candidate-set-off'
+import { TX_TYPE } from 'minter-js-sdk'
 
 import log from './assets/winston'
 import tglog from './assets/tglogger'
-import node from './api/node'
-import { wait, errHandler } from './assets/utils'
-import {
-  CHAIN_ID,
-  BASE_COIN_NAME,
-  CONFIG,
-  TX_TIMEOUT,
-  VALIDATOR_PUB_KEY,
-  WALLET
-} from './assets/variables'
+import { node_v2 } from './api/'
+import { errHandler, wait } from './assets/utils'
+import { BASE_COIN_NAME, CHAIN_ID, CONFIG, TX_TIMEOUT, VALIDATOR_PUB_KEY, WALLET } from './assets/variables'
 
 let dogTimer = null
 const txWaitTimeout = TX_TIMEOUT
@@ -21,7 +14,7 @@ const txWaitTimeout = TX_TIMEOUT
  * @returns {Promise<*|Promise<void>>}
  */
 const getMissedBlocks = async (validatorPubKey) => {
-  return node.getMissedBlocks(validatorPubKey)
+  return node_v2.getMissedBlocks(validatorPubKey)
     .then(result => {
       return {
         missedCount  : parseInt(result.missed_blocks_count)/*Math.floor(Math.random() * Math.floor(12))*/,
@@ -45,15 +38,20 @@ const getMissedBlocks = async (validatorPubKey) => {
  */
 const sendCmdTx = async () => {
 
-  const oTx = new SetCandidateOffTxParams({
-    chainId   : CHAIN_ID,
-    privateKey: WALLET.getPrivateKeyString(),
-
-    publicKey    : VALIDATOR_PUB_KEY,
+  const txOptions = {
+    chainId      : CHAIN_ID,
+    privateKey   : WALLET.getPrivateKeyString(),
     feeCoinSymbol: BASE_COIN_NAME
-  })
+  }
 
-  return node.postTx(oTx) /*'======= TX HASH ========='*/
+  const txParams = {
+    type: TX_TYPE.SET_CANDIDATE_OFF,
+    data: {
+      publicKey: VALIDATOR_PUB_KEY
+    }
+  }
+  /*'======= TX HASH ========='*/
+  return node_v2.postTx(txParams, { ...txOptions },{baseURL:''}).then(resData=>resData.hash)
 }
 
 /**
