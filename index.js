@@ -41,17 +41,19 @@ const sendCmdTx = async () => {
   const txOptions = {
     chainId      : CHAIN_ID,
     privateKey   : WALLET.getPrivateKeyString(),
-    feeCoinSymbol: BASE_COIN_NAME
+    feeCoinSymbol: BASE_COIN_NAME,
+    gasRetryLimit: 5,
   }
 
   const txParams = {
-    type: TX_TYPE.SET_CANDIDATE_OFF,
-    data: {
+    type    : TX_TYPE.SET_CANDIDATE_OFF,
+    gasPrice: 5,
+    data    : {
       publicKey: VALIDATOR_PUB_KEY
     }
   }
   /*'======= TX HASH ========='*/
-  return node_v2.postTx(txParams, { ...txOptions },{baseURL:''}).then(resData=>resData.hash)
+  return node_v2.postTx(txParams, { ...txOptions }, { baseURL: '' }).then(resData => resData.hash)
 }
 
 /**
