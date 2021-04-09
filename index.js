@@ -1,36 +1,34 @@
-import { TX_TYPE } from 'minter-js-sdk'
+import {TX_TYPE} from 'minter-js-sdk';
 
-import log from './assets/winston'
-import tglog from './assets/tglogger'
-import { node_v2 } from './api/'
-import { errHandler, wait } from './assets/utils'
-import { BASE_COIN_NAME, CHAIN_ID, CONFIG, TX_TIMEOUT, VALIDATOR_PUB_KEY, WALLET } from './assets/variables'
+import log from './assets/winston';
+import tglog from './assets/tglogger';
+import {node_v2} from './api/';
+import {errHandler, wait} from './assets/utils';
+import {BASE_COIN_NAME, CHAIN_ID, CONFIG, TX_TIMEOUT, VALIDATOR_PUB_KEY, WALLET} from './assets/variables';
 
-let dogTimer = null
-const txWaitTimeout = TX_TIMEOUT
+let dogTimer = null;
+const txWaitTimeout = TX_TIMEOUT;
 
 /**
  *
  * @returns {Promise<*|Promise<void>>}
  */
 const getMissedBlocks = async (validatorPubKey) => {
-  return node_v2.getMissedBlocks(validatorPubKey)
-    .then(result => {
+  return node_v2.getMissedBlocks(validatorPubKey).then(result => {
+    return {
+      missedCount  : parseInt(result.missed_blocks_count)/*Math.floor(Math.random() * Math.floor(12))*/,
+      missedDiagram: result.missed_blocks,
+    };
+  }).catch(err => {
+    if (err.error && err.error.code && parseInt(err.error.code) === 404) {
       return {
-        missedCount  : parseInt(result.missed_blocks_count)/*Math.floor(Math.random() * Math.floor(12))*/,
-        missedDiagram: result.missed_blocks
-      }
-    })
-    .catch(err => {
-      if (err.error && err.error.code && parseInt(err.error.code) === 404) {
-        return {
-          missedCount  : 0,
-          missedDiagram: err.error.message ? err.error.message.toUpperCase() : '-- Unknown error --'
-        }
-      }
-      throw err
-    })
-}
+        missedCount  : 0,
+        missedDiagram: err.error.message ? err.error.message.toUpperCase() : '-- Unknown error --',
+      };
+    }
+    throw err;
+  });
+};
 
 /**
  *
@@ -43,76 +41,69 @@ const sendCmdTx = async () => {
     privateKey   : WALLET.getPrivateKeyString(),
     feeCoinSymbol: BASE_COIN_NAME,
     gasRetryLimit: 5,
-  }
+  };
 
   const txParams = {
     type    : TX_TYPE.SET_CANDIDATE_OFF,
     gasPrice: 5,
     data    : {
-      publicKey: VALIDATOR_PUB_KEY
-    }
-  }
+      publicKey: VALIDATOR_PUB_KEY,
+    },
+  };
   /*'======= TX HASH ========='*/
-  return node_v2.postTx(txParams, { ...txOptions }, { baseURL: '' }).then(resData => resData.hash)
-}
+  return node_v2.postTx(txParams, {...txOptions}, {baseURL: ''}).then(resData => resData.hash);
+};
 
 /**
  *
  * @returns {Promise<T>}
  */
 const Run = async () => {
-  const watchingInterval = txWaitTimeout
+  const watchingInterval = txWaitTimeout;
 
-  return wait(10)
-    .then(() => {
-      let startMsg = `
+  return wait(10).then(() => {
+    let startMsg = `
 ===== Watchdog starting... =================================
 Owner Address    :   ${WALLET.getAddressString()}
 PubKey           :   ${VALIDATOR_PUB_KEY}
 Threshold Missed :   ${CONFIG.maxMissed}
-============================================================`
-      startMsg.split('\n').forEach(log.info)
+============================================================`;
+    startMsg.split('\n').forEach(log.info);
 
-      dogTimer = setTimeout(function watch () {
-        let pubKey = VALIDATOR_PUB_KEY.toString()
-        let shortName = pubKey.substr(0, 8) + '...' + pubKey.substr(-8)
-        let preMsg = `[${shortName}]:`
-        log.info(`Watching for: ${preMsg}`)
-        return getMissedBlocks(pubKey)
-          .then(({ missedCount, missedDiagram }) => {
+    dogTimer = setTimeout(function watch() {
+      let pubKey = VALIDATOR_PUB_KEY.toString();
+      let shortName = pubKey.substr(0, 8) + '...' + pubKey.substr(-8);
+      let preMsg = `[${shortName}]:`;
+      log.info(`Watching for: ${preMsg}`);
+      return getMissedBlocks(pubKey).then(({missedCount, missedDiagram}) => {
 
-            logMissedBlockStatus({ missedCount, missedDiagram, preMsg }).catch(errHandler)
+        logMissedBlockStatus({missedCount, missedDiagram, preMsg}).catch(errHandler);
 
-            if (missedCount >= CONFIG.maxMissed) {
-              // НЕ ставим await т.к. транзакция критичная. Лучше пусть будет дубль транщзакции из-за того что не
-              // ждали ответа, чем штраф
-              return sendCmdTx()
-                .then((txHash) => logCmdSuccess({ txHash, preMsg }))
-                .catch(err => {
-                  if (err.error && err.error.data && 0 <= err.error.data.indexOf('already exists')) {
-                    log.info('SetOff FAILED : Tx already exists')
-                    return
-                  }
-                  if (err.error && err.error.tx_result && err.error.tx_result.log) {
-                    log.error('SetOff FAILED : ' + err.error.tx_result.log)
-                    return
-                  }
-
-                  throw err
-                })
+        if (missedCount >= CONFIG.maxMissed) {
+          // НЕ ставим await т.к. транзакция критичная. Лучше пусть будет дубль транщзакции из-за того что не
+          // ждали ответа, чем штраф
+          return sendCmdTx().then((txHash) => logCmdSuccess({txHash, preMsg})).catch(err => {
+            if (err.error && err.error.data && 0 <= err.error.data.indexOf('already exists')) {
+              log.info('SetOff FAILED : Tx already exists');
+              return;
             }
-          })
-          .catch(errHandler)
-          .finally(() => {
-            clearTimeout(dogTimer)
-            dogTimer = setTimeout(watch, watchingInterval * 1000)
-          })
-      }, watchingInterval * 1000)
+            if (err.error && err.error.tx_result && err.error.tx_result.log) {
+              log.error('SetOff FAILED : ' + err.error.tx_result.log);
+              return;
+            }
 
-      return Promise.resolve()
-    })
-    .then(logWatchdogStarted)
-}
+            throw err;
+          });
+        }
+      }).catch(errHandler).finally(() => {
+        clearTimeout(dogTimer);
+        dogTimer = setTimeout(watch, watchingInterval * 1000);
+      });
+    }, watchingInterval * 1000);
+
+    return Promise.resolve();
+  }).then(logWatchdogStarted);
+};
 
 /*-------------------------------------------------------*/
 /**
@@ -120,42 +111,42 @@ Threshold Missed :   ${CONFIG.maxMissed}
  * @returns {Promise<*|void>}
  */
 const logWatchdogStarted = () => {
-  log.info('Watchdog started!')
+  log.info('Watchdog started!');
 
   return tglog.updateStatus({
     missedCount  : 0,
     missedDiagram: 'Watchdog started',
-    maxMissed    : CONFIG.maxMissed
-  }).catch(errHandler)
-}
+    maxMissed    : CONFIG.maxMissed,
+  }).catch(errHandler);
+};
 
 /**
  *
  */
 const logMissedBlockStatus = (() => {
-  let lastMissedCount = 0
+  let lastMissedCount = 0;
 
-  return async ({ missedCount, missedDiagram, preMsg = '' }) => {
+  return async ({missedCount, missedDiagram, preMsg = ''}) => {
 
-    let isMissedGrown = (lastMissedCount < missedCount)
-    lastMissedCount = missedCount
+    let isMissedGrown = (lastMissedCount < missedCount);
+    lastMissedCount = missedCount;
 
-    log.info(`${preMsg} Missed ${missedCount} of ${CONFIG.maxMissed} (${missedDiagram})`)
+    log.info(`${preMsg} Missed ${missedCount} of ${CONFIG.maxMissed} (${missedDiagram})`);
 
     // Telegram log
     return isMissedGrown
-      ? tglog.reportMissingBlock()
-      : tglog.updateStatus({ missedCount, missedDiagram: `${preMsg}\n ${missedDiagram}`, maxMissed: CONFIG.maxMissed })
-  }
-})()
+        ? tglog.reportMissingBlock()
+        : tglog.updateStatus({missedCount, missedDiagram: `${preMsg}\n ${missedDiagram}`, maxMissed: CONFIG.maxMissed});
+  };
+})();
 
 /**
  *
  */
-const logCmdSuccess = ({ txHash, preMsg = '' }) => {
-  log.warn(`${preMsg} SET OFF Command sent | Hash: ${txHash}`)
+const logCmdSuccess = ({txHash, preMsg = ''}) => {
+  log.warn(`${preMsg} SET OFF Command sent | Hash: ${txHash}`);
 
-  return tglog.reportSuccessCmd({ txHash }).catch(errHandler)
-}
+  return tglog.reportSuccessCmd({txHash}).catch(errHandler);
+};
 
-Run().catch(errHandler)
+Run().catch(errHandler);

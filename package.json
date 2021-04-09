@@ -1,6 +1,6 @@
 {
 	"name": "minter-watchdog",
-	"version": "4.0.0",
+	"version": "4.1.0",
 	"description": "",
 	"main": "index.js",
 	"scripts": {
@@ -13,16 +13,16 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"axios": "^0.20.0",
+		"axios": "^0.21.1",
 		"dotenv": "^8.2.0",
 		"esm": "^3.2.25",
 		"json-stringify-safe": "^5.0.1",
-		"minter-js-sdk": "^0.35.4",
-		"minterjs-wallet": "^6.0.0",
+		"minter-js-sdk": "^0.38.0",
+		"minterjs-wallet": "^6.1.0",
 		"winston": "^3.3.3"
 	},
 	"devDependencies": {
-		"minterjs-tx": "^9.0.1",
-		"nodemon": "^2.0.5"
+		"minterjs-tx": "^10.0.0",
+		"nodemon": "^2.0.7"
 	}
 }
