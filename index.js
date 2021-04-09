@@ -64,9 +64,9 @@ const Run = async () => {
   return wait(10).then(() => {
     let startMsg = `
 ===== Watchdog starting... =================================
-Owner Address    :   ${WALLET.getAddressString()}
-PubKey           :   ${VALIDATOR_PUB_KEY}
-Threshold Missed :   ${CONFIG.maxMissed}
+Wallet Address          :   ${WALLET.getAddressString()}
+Validator PubKey        :   ${VALIDATOR_PUB_KEY}
+Threshold Missed blocks :   ${CONFIG.maxMissed}
 ============================================================`;
     startMsg.split('\n').forEach(log.info);
 
